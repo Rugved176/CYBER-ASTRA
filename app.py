@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
-import requests
 import streamlit as st
 
 
@@ -21,9 +20,10 @@ LOGO_PATH = BASE_DIR / "assets" / "cyber_astra_logo.png"
 ALERT_FILE = BASE_DIR / "data" / "alerts.json"
 BENCHMARK_FILE = BASE_DIR / "data" / "benchmark_report.json"
 
-OLLAMA_URL = "https://ollama.com/api/chat"
-OLLAMA_API_KEY = None
-OLLAMA_MODEL = "qwen3:14b"
+# Local Ollama by default. You can override these with environment variables.
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:14b")
 
 EXPECTED_THREAT_COUNT = 6
 
@@ -124,6 +124,16 @@ def load_alerts():
         )
 
         return pd.DataFrame()
+
+
+def safe_float(value, default=0.0):
+    """Safely convert dashboard values to float."""
+    try:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 # ============================================================
@@ -487,9 +497,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Plain Markdown is intentionally used here instead of nested HTML spans.
+# This prevents Streamlit from displaying raw <span> tags as code.
+st.markdown(
+    "**ONE-WAY TRAFFIC**  →  **AI ANALYSIS**  →  **THREAT DETECTION**  →  **EVIDENCE-BASED ALERT**"
+)
 
 # ============================================================
-# ALERT METRICS
+# SOC KPI METRICS
 # ============================================================
 
 if df.empty:
@@ -503,64 +518,147 @@ else:
 
     total_alerts = len(df)
 
-    high_alerts = len(
-        df[
-            df["severity"]
-            .astype(str)
-            .str.upper()
-            == "HIGH"
-        ]
+    severity_series = (
+        df["severity"]
+        .astype(str)
+        .str.upper()
     )
 
-    medium_alerts = len(
-        df[
-            df["severity"]
-            .astype(str)
-            .str.upper()
-            == "MEDIUM"
-        ]
+    high_alerts = int(
+        (severity_series == "HIGH").sum()
     )
 
-    low_alerts = len(
-        df[
-            df["severity"]
-            .astype(str)
-            .str.upper()
-            == "LOW"
-        ]
+    medium_alerts = int(
+        (severity_series == "MEDIUM").sum()
     )
 
+    low_alerts = int(
+        (severity_series == "LOW").sum()
+    )
+
+
+# ------------------------------------------------------------
+# KPI HEADER
+# ------------------------------------------------------------
+
+st.markdown(
+    """
+    <div style="
+        margin-top: 8px;
+        margin-bottom: 10px;
+        color: #8ea0b8;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+    ">
+        SOC STATUS OVERVIEW
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ------------------------------------------------------------
+# KPI CARDS
+# ------------------------------------------------------------
 
 m1, m2, m3, m4, m5 = st.columns(5)
 
-m1.metric(
-    "🚨 Total Alerts",
-    total_alerts
-)
 
-m2.metric(
-    "🔴 HIGH",
-    high_alerts
-)
+with m1:
 
-m3.metric(
-    "🟠 MEDIUM",
-    medium_alerts
-)
+    st.metric(
+        label="🚨 ACTIVE ALERTS",
+        value=total_alerts,
+    )
 
-m4.metric(
-    "🟢 LOW",
-    low_alerts
-)
 
-m5.metric(
-    "🛡️ Threat Engines",
-    EXPECTED_THREAT_COUNT
-)
+with m2:
 
+    st.metric(
+        label="🔴 HIGH SEVERITY",
+        value=high_alerts,
+    )
+
+
+with m3:
+
+    st.metric(
+        label="🟠 MEDIUM",
+        value=medium_alerts,
+    )
+
+
+with m4:
+
+    st.metric(
+        label="🟢 LOW",
+        value=low_alerts,
+    )
+
+
+with m5:
+
+    st.metric(
+        label="🛡️ THREAT ENGINES",
+        value=EXPECTED_THREAT_COUNT,
+    )
+
+
+st.markdown(
+    """
+    <div style="
+        height: 4px;
+        margin-top: 12px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        background:
+            linear-gradient(
+                90deg,
+                rgba(0,220,255,0.0),
+                rgba(0,220,255,0.35),
+                rgba(0,220,255,0.0)
+            );
+    "></div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.divider()
+# ============================================================
+# THREAT DETECTION ENGINES
+# ============================================================
 
+st.markdown("### 🛡️ Threat Detection Engines")
+st.caption("Six passive detection engines operating on one-way traffic metadata")
+
+engines = [
+    ("🔴", "DDoS / FLOODING", "Traffic-rate & protocol anomaly detection"),
+    ("🟣", "BOTNET C2", "Periodic flow timing & beaconing analysis"),
+    ("🟡", "DGA / DNS", "Entropy & query-length anomaly detection"),
+    ("🔵", "ENCRYPTED SESSION", "TLS/QUIC metadata analysis"),
+    ("🟠", "RECONNAISSANCE", "Destination fan-out analysis"),
+    ("🟢", "DATA EXFILTRATION", "Outbound/inbound volume asymmetry"),
+]
+
+engine_cols = st.columns(3)
+
+for i, (icon, name, description) in enumerate(engines):
+
+    with engine_cols[i % 3]:
+
+        with st.container(border=True):
+
+            st.markdown(f"### {icon} {name}")
+
+            st.caption(description)
+
+            st.markdown(
+                "🟢 **ACTIVE**  ·  **PASSIVE**  ·  **READ-ONLY**"
+            )
+
+st.divider()
 
 # ============================================================
 # FILTERS
@@ -749,6 +847,9 @@ if not filtered_df.empty:
 st.divider()
 
 st.markdown("### 🚨 Security Alert Feed")
+st.caption(
+    "Evidence-based alerts generated from passive, read-only traffic analysis."
+)
 
 if filtered_df.empty:
 
@@ -758,62 +859,82 @@ if filtered_df.empty:
 
 else:
 
-    display_columns = [
-        "timestamp",
-        "flow_id",
-        "threat_class",
-        "severity",
-        "confidence",
-        "ml_anomaly_score",
-        "src_ip",
-        "dst_ip",
-        "evidence",
-    ]
+    # Show newest alerts first
+    alert_feed = filtered_df.copy()
 
-    available_columns = [
-        column
-        for column in display_columns
-        if column in filtered_df.columns
-    ]
+    if "timestamp" in alert_feed.columns:
+        alert_feed = alert_feed.iloc[::-1]
 
-    display_df = filtered_df[
-        available_columns
-    ].copy()
+    for _, alert in alert_feed.iterrows():
 
-    if "confidence" in display_df.columns:
+        severity = str(
+            alert.get("severity", "UNKNOWN")
+        ).upper()
 
-        display_df["confidence"] = (
-            pd.to_numeric(
-                display_df["confidence"],
-                errors="coerce"
-            )
-            .fillna(0)
-            .mul(100)
-            .round(1)
-            .astype(str)
-            + "%"
+        threat = str(
+            alert.get("threat_class", "Unknown Threat")
         )
 
-    if "ml_anomaly_score" in display_df.columns:
-
-        display_df["ml_anomaly_score"] = (
+        confidence = float(
             pd.to_numeric(
-                display_df["ml_anomaly_score"],
+                alert.get("confidence", 0),
                 errors="coerce"
             )
-            .fillna(0)
-            .mul(100)
-            .round(1)
-            .astype(str)
-            + "%"
+            or 0
         )
 
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
-        height=350
-    )
+        ml_score = float(
+            pd.to_numeric(
+                alert.get("ml_anomaly_score", 0),
+                errors="coerce"
+            )
+            or 0
+        )
+
+        timestamp = str(
+            alert.get("timestamp", "Unknown time")
+        )
+
+        flow_id = str(
+            alert.get("flow_id", "unknown")
+        )
+
+        src_ip = str(
+            alert.get("src_ip", "unknown")
+        )
+
+        dst_ip = str(
+            alert.get("dst_ip", "unknown")
+        )
+
+        evidence = str(
+            alert.get("evidence", "No supporting evidence available.")
+        )
+
+        if severity == "CRITICAL":
+            severity_icon = "🔴"
+        elif severity == "HIGH":
+            severity_icon = "🟠"
+        elif severity == "MEDIUM":
+            severity_icon = "🟡"
+        else:
+            severity_icon = "🟢"
+
+        st.markdown(
+            f"""
+**{severity_icon} {severity} — {threat}**
+
+`Flow: {flow_id}`  •  `Confidence: {confidence:.0%}`  •  `ML anomaly: {ml_score:.0%}`
+
+**Source:** `{src_ip}` → **Destination:** `{dst_ip}`
+
+**Evidence:** {evidence}
+
+🕒 `{timestamp}`
+"""
+        )
+
+        st.divider()
 
 
 # ============================================================
@@ -822,171 +943,188 @@ else:
 
 st.divider()
 
-st.markdown(
-    "### 🔄 Offline Traffic Stream Replay"
-)
+st.markdown("### 🔄 Offline Traffic Stream Replay")
 
 st.caption(
     "Replays previously collected flow records one at a time "
     "to demonstrate incremental near-real-time passive detection."
 )
 
-replay_col1, replay_col2 = st.columns(
-    [2, 1]
-)
+# ------------------------------------------------------------
+# REPLAY CONTROLS
+# ------------------------------------------------------------
+
+replay_col1, replay_col2 = st.columns([3, 1])
 
 with replay_col1:
 
-    replay_delay = st.slider(
-        "Replay interval (seconds)",
-        min_value=0.1,
-        max_value=3.0,
-        value=0.5,
-        step=0.1,
-        key="replay_delay"
+    st.markdown(
+        "**Replay Mode:** "
+        "Offline • Read-Only • Passive"
     )
 
 with replay_col2:
 
-    replay_start = st.button(
-        "▶ Start Replay",
-        use_container_width=True
+    st.markdown(
+        "**Source:** `validation_flows.csv`"
     )
 
+st.markdown("")
 
-if replay_start:
+# ------------------------------------------------------------
+# REPLAY EXECUTION
+# ------------------------------------------------------------
 
-    try:
+if st.button(
+    "▶️ Start Traffic Replay",
+    use_container_width=True
+):
 
-        from replay import replay_flows
+    replay_file = BASE_DIR / "data" / "validation_flows.csv"
 
-        replay_placeholder = st.empty()
+    if not replay_file.exists():
 
-        progress_bar = st.progress(0)
+        st.error(
+            "Validation replay file not found."
+        )
 
-        replay_results = []
+    else:
 
-        replay_total = 6
+        try:
 
-        for result in replay_flows(
-            delay=replay_delay
-        ):
+            from ingestion.csv_ingest import load_flow_csv
+            from features.engine import calculate_features
+            from detectors.engine import analyze_dataframe
+            import time
 
-            replay_results.append(result)
-
-            flow_number = result[
-                "flow_number"
-            ]
-
-            flow_id = result.get(
-                "flow_id",
-                "unknown"
+            replay_df = load_flow_csv(
+                str(replay_file)
             )
 
-            processing_time = result.get(
-                "processing_time_ms",
-                0
-            )
+            total_flows = len(replay_df)
 
-            alerts = result[
-                "alerts"
-            ]
+            progress_bar = st.progress(0)
 
-            with replay_placeholder.container():
+            status_box = st.empty()
 
-                st.markdown(
-                    f"**Processing Flow {flow_number} / "
-                    f"{replay_total}**"
+            for i in range(total_flows):
+
+                flow = replay_df.iloc[
+                    i:i + 1
+                ].copy()
+
+                start_time = time.perf_counter()
+
+                features = calculate_features(
+                    flow
                 )
 
-                st.caption(
-                    f"Flow ID: `{flow_id}`  |  "
-                    f"Processing cost: "
-                    f"`{processing_time:.3f} ms`"
+                detections = analyze_dataframe(
+                    features
                 )
 
-                if alerts:
+                processing_time = (
+                    time.perf_counter()
+                    - start_time
+                ) * 1000
+
+                progress = (
+                    i + 1
+                ) / total_flows
+
+                progress_bar.progress(
+                    progress
+                )
+
+                status_box.markdown(
+                    f"**Processing Flow {i + 1} / "
+                    f"{total_flows}**"
+                )
+
+                # ------------------------------------------------
+                # FLOW STATUS
+                # ------------------------------------------------
+
+                if detections.empty:
 
                     st.success(
-                        f"Threat detected — "
-                        f"{len(alerts)} alert(s)"
+                        f"🟢 Flow {i + 1:02d} — "
+                        "No threat detected"
                     )
-
-                    for alert in alerts:
-
-                        st.warning(
-                            f"**{alert.get('threat_class', 'Unknown')}** "
-                            f"| Severity: "
-                            f"{alert.get('severity', 'Unknown')} "
-                            f"| Confidence: "
-                            f"{float(alert.get('confidence', 0)) * 100:.1f}%"
-                        )
-
-                        st.caption(
-                            alert.get(
-                                "evidence",
-                                "No evidence available."
-                            )
-                        )
 
                 else:
 
-                    st.info(
-                        "No threat detected for this flow."
+                    alert = detections.iloc[0]
+
+                    threat = str(
+                        alert.get(
+                            "threat_class",
+                            "Unknown"
+                        )
                     )
 
-            progress_bar.progress(
-                min(
-                    flow_number / replay_total,
-                    1.0
-                )
+                    severity = str(
+                        alert.get(
+                            "severity",
+                            "UNKNOWN"
+                        )
+                    ).upper()
+
+                    confidence = float(
+                        pd.to_numeric(
+                            alert.get(
+                                "confidence",
+                                0
+                            ),
+                            errors="coerce"
+                        )
+                        or 0
+                    )
+
+                    evidence = str(
+                        alert.get(
+                            "evidence",
+                            "No evidence available."
+                        )
+                    )
+
+                    if severity == "CRITICAL":
+                        icon = "🔴"
+                    elif severity == "HIGH":
+                        icon = "🟠"
+                    elif severity == "MEDIUM":
+                        icon = "🟡"
+                    else:
+                        icon = "🟢"
+
+                    st.markdown(
+                        f"""
+### {icon} THREAT DETECTED
+
+**{threat}**
+
+**Severity:** `{severity}`  
+**Confidence:** `{confidence:.0%}`  
+**Processing Time:** `{processing_time:.2f} ms`
+
+**Evidence**
+
+{evidence}
+"""
+                    )
+
+                st.divider()
+
+            status_box.success(
+                f"✅ Replay completed — "
+                f"{total_flows} flows processed."
             )
 
-        if replay_results:
+        except Exception as error:
 
-            replay_times = [
-                result.get(
-                    "processing_time_ms",
-                    0
-                )
-                for result in replay_results
-            ]
-
-            avg_replay_time = (
-                sum(replay_times)
-                / len(replay_times)
+            st.error(
+                f"Replay failed: {error}"
             )
-
-            max_replay_time = max(
-                replay_times
-            )
-
-            st.success(
-                f"Replay complete — "
-                f"{len(replay_results)} flows processed."
-            )
-
-            rc1, rc2 = st.columns(2)
-
-            with rc1:
-
-                st.metric(
-                    "Replay Avg Processing",
-                    f"{avg_replay_time:.3f} ms"
-                )
-
-            with rc2:
-
-                st.metric(
-                    "Replay Max Processing",
-                    f"{max_replay_time:.3f} ms"
-                )
-
-    except Exception as error:
-
-        st.error(
-            f"Replay failed: {error}"
-        )
 
 
 # ============================================================
@@ -995,31 +1133,72 @@ if replay_start:
 
 st.divider()
 
-st.markdown(
-    "### ⚡ Performance & Validation"
+st.markdown("### ⚡ Performance & Validation")
+
+st.caption(
+    "Offline synthetic benchmark used to validate processing throughput "
+    "and required threat-class coverage."
 )
 
+# ------------------------------------------------------------
+# LOAD BENCHMARK REPORT
+# ------------------------------------------------------------
 
-if BENCHMARK_FILE.exists():
+benchmark_file = (
+    BASE_DIR
+    / "data"
+    / "benchmark_report.json"
+)
+
+if not benchmark_file.exists():
+
+    st.warning(
+        "No benchmark report found. "
+        "Run benchmark.py to generate validation results."
+    )
+
+else:
 
     try:
 
         with open(
-            BENCHMARK_FILE,
+            benchmark_file,
             "r",
             encoding="utf-8"
-        ) as file:
+        ) as f:
 
-            benchmark = json.load(file)
+            benchmark = json.load(f)
 
-        counts = benchmark.get(
-            "counts",
-            {}
+        flows_processed = int(
+            benchmark.get(
+                "flows_processed",
+                0
+            )
         )
 
-        kpis = benchmark.get(
-            "performance_kpis",
-            {}
+        throughput = float(
+            benchmark.get(
+                "flows_per_second",
+                0
+            )
+        )
+
+        avg_ms = float(
+            benchmark.get(
+                "avg_ms_per_flow",
+                0
+            )
+        )
+
+        target = float(
+            benchmark.get(
+                "target_flows_per_second",
+                100
+            )
+        )
+
+        target_achieved = (
+            throughput >= target
         )
 
         coverage = benchmark.get(
@@ -1027,106 +1206,8 @@ if BENCHMARK_FILE.exists():
             {}
         )
 
-        benchmark_type = benchmark.get(
-            "benchmark_type",
-            "Offline synthetic replay"
-        )
-
-        target_throughput = benchmark.get(
-            "target_throughput_fps",
-            100.0
-        )
-
-        flows_analyzed = counts.get(
-            "flows_analyzed",
-            0
-        )
-
-        alerts_generated = counts.get(
-            "alerts_generated",
-            0
-        )
-
-        throughput = kpis.get(
-            "throughput_fps",
-            0
-        )
-
-        avg_processing = kpis.get(
-            "avg_processing_ms_per_flow",
-            0
-        )
-
-        target_achieved = kpis.get(
-            "target_achieved",
-            False
-        )
-
-        st.caption(
-            f"Benchmark type: {benchmark_type}. "
-            "This measures offline synthetic replay performance "
-            "on the development machine."
-        )
-
-        b1, b2, b3, b4 = st.columns(4)
-
-        with b1:
-
-            st.metric(
-                "Flows Processed",
-                f"{flows_analyzed:,}"
-            )
-
-        with b2:
-
-            st.metric(
-                "Alerts Generated",
-                f"{alerts_generated:,}"
-            )
-
-        with b3:
-
-            st.metric(
-                "Throughput",
-                f"{throughput:,.2f} flows/s"
-            )
-
-        with b4:
-
-            st.metric(
-                "Avg Processing Cost",
-                f"{avg_processing:.3f} ms/flow"
-            )
-
-        if target_achieved:
-
-            st.success(
-                f"✅ Benchmark target achieved — "
-                f"{throughput:,.2f} flows/sec measured "
-                f"against a defined prototype target of "
-                f"{target_throughput:,.0f} flows/sec."
-            )
-
-        else:
-
-            st.warning(
-                f"⚠️ Benchmark target not achieved — "
-                f"{throughput:,.2f} flows/sec measured "
-                f"against a target of "
-                f"{target_throughput:,.0f} flows/sec."
-            )
-
-        st.caption(
-            "Important: this is an offline synthetic benchmark, "
-            "not a production network-throughput guarantee."
-        )
-
-        st.markdown(
-            "#### 🛡️ Six-Threat Validation Coverage"
-        )
-
         expected_threats = [
-            "Volumetric / Protocol DDoS",
+            "DDoS / Flooding",
             "Botnet C2 Beaconing",
             "DGA Domains / DNS Tunnelling",
             "Malware in Encrypted Session",
@@ -1134,75 +1215,145 @@ if BENCHMARK_FILE.exists():
             "Data Exfiltration",
         ]
 
-        validation_rows = []
-
-        for threat in expected_threats:
-
-            alert_count = coverage.get(
-                threat,
-                0
-            )
-
-            detected = alert_count > 0
-
-            validation_rows.append(
-                {
-                    "Threat Class": threat,
-                    "Detections": alert_count,
-                    "Validation Result": (
-                        "✅ DETECTED"
-                        if detected
-                        else "❌ NOT DETECTED"
-                    ),
-                }
-            )
-
-        validation_df = pd.DataFrame(
-            validation_rows
-        )
-
-        st.dataframe(
-            validation_df,
-            use_container_width=True,
-            hide_index=True
-        )
-
         detected_count = sum(
-            coverage.get(
-                threat,
-                0
+            int(
+                coverage.get(
+                    threat,
+                    0
+                )
             ) > 0
             for threat in expected_threats
         )
 
-        if detected_count == EXPECTED_THREAT_COUNT:
+        # ----------------------------------------------------
+        # PRIMARY BENCHMARK METRICS
+        # ----------------------------------------------------
+
+        st.markdown("#### 🚀 Processing Performance")
+
+        p1, p2, p3, p4 = st.columns(4)
+
+        with p1:
+
+            st.metric(
+                "Flows Processed",
+                f"{flows_processed:,}"
+            )
+
+        with p2:
+
+            st.metric(
+                "Throughput",
+                f"{throughput:,.2f} flows/sec"
+            )
+
+        with p3:
+
+            st.metric(
+                "Average Processing",
+                f"{avg_ms:.3f} ms/flow"
+            )
+
+        with p4:
+
+            st.metric(
+                "Target",
+                f"{target:,.0f} flows/sec"
+            )
+
+        if target_achieved:
 
             st.success(
-                f"Validation coverage: "
-                f"{detected_count}/{EXPECTED_THREAT_COUNT} "
-                "required threat classes exercised successfully."
+                f"✅ Benchmark target achieved: "
+                f"{throughput:,.2f} flows/sec "
+                f">= {target:,.0f} flows/sec"
             )
 
         else:
 
             st.warning(
-                f"Validation coverage: "
-                f"{detected_count}/{EXPECTED_THREAT_COUNT} "
-                "threat classes detected."
+                f"⚠️ Benchmark throughput: "
+                f"{throughput:,.2f} flows/sec "
+                f"against target of "
+                f"{target:,.0f} flows/sec"
             )
+
+        # ----------------------------------------------------
+        # THREAT COVERAGE
+        # ----------------------------------------------------
+
+        st.markdown("#### 🛡️ Six-Class Threat Validation")
+
+        st.caption(
+            "Validation coverage indicates that each required threat "
+            "class was exercised by the offline benchmark dataset."
+        )
+
+        validation_cols = st.columns(3)
+
+        for i, threat in enumerate(
+            expected_threats
+        ):
+
+            count = int(
+                coverage.get(
+                    threat,
+                    0
+                )
+            )
+
+            detected = count > 0
+
+            with validation_cols[i % 3]:
+
+                if detected:
+
+                    st.success(
+                        f"✅ {threat}\n\n"
+                        f"{count:,} detection(s)"
+                    )
+
+                else:
+
+                    st.error(
+                        f"❌ {threat}\n\n"
+                        "Not detected"
+                    )
+
+        # ----------------------------------------------------
+        # VALIDATION SUMMARY
+        # ----------------------------------------------------
+
+        st.markdown("")
+
+        if detected_count == len(
+            expected_threats
+        ):
+
+            st.success(
+                f"🎯 Threat-class coverage: "
+                f"{detected_count}/{len(expected_threats)} "
+                f"required classes exercised successfully."
+            )
+
+        else:
+
+            st.warning(
+                f"Threat-class coverage: "
+                f"{detected_count}/{len(expected_threats)}."
+            )
+
+        st.info(
+            "ℹ️ This is an offline synthetic benchmark for prototype "
+            "validation. It is not a guarantee of production network "
+            "throughput or detection accuracy."
+        )
 
     except Exception as error:
 
         st.error(
             f"Unable to load benchmark report: {error}"
         )
-
-else:
-
-    st.info(
-        "No benchmark report found. "
-        "Run `python benchmark.py` to generate one."
-    )
 
 
 # ============================================================
@@ -1211,8 +1362,9 @@ else:
 
 st.divider()
 
-st.markdown(
-    "### 🔎 Alert Investigation"
+st.markdown("### 🔎 Alert Investigation")
+st.caption(
+    "Detailed inspection of the selected evidence-based detection."
 )
 
 if filtered_df.empty:
@@ -1237,108 +1389,103 @@ else:
         selected_index
     ]
 
-    if "flow_id" in selected_alert.index:
+    # --------------------------------------------------------
+    # ALERT SUMMARY
+    # --------------------------------------------------------
 
-        st.markdown("**Flow ID**")
-
-        st.code(
-            str(
-                selected_alert.get(
-                    "flow_id",
-                    "Unknown"
-                )
-            )
+    threat = str(
+        selected_alert.get(
+            "threat_class",
+            "Unknown Threat"
         )
+    )
 
-    col1, col2, col3 = st.columns(3)
+    severity = str(
+        selected_alert.get(
+            "severity",
+            "UNKNOWN"
+        )
+    ).upper()
 
-    with col1:
-
-        confidence = float(
+    confidence = float(
+        pd.to_numeric(
             selected_alert.get(
                 "confidence",
                 0
-            )
+            ),
+            errors="coerce"
         )
+        or 0
+    )
 
-        st.metric(
-            "Detector Confidence",
-            f"{confidence * 100:.1f}%"
-        )
-
-    with col2:
-
-        ml_score = float(
+    ml_score = float(
+        pd.to_numeric(
             selected_alert.get(
                 "ml_anomaly_score",
                 0
-            )
+            ),
+            errors="coerce"
+        )
+        or 0
+    )
+
+    if severity == "CRITICAL":
+        severity_icon = "🔴"
+    elif severity == "HIGH":
+        severity_icon = "🟠"
+    elif severity == "MEDIUM":
+        severity_icon = "🟡"
+    else:
+        severity_icon = "🟢"
+
+    st.markdown(
+        f"### {severity_icon} {severity} — {threat}"
+    )
+
+    # --------------------------------------------------------
+    # CORE METRICS
+    # --------------------------------------------------------
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "Detector Confidence",
+            f"{confidence:.0%}"
         )
 
+    with col2:
         st.metric(
             "ML Anomaly Score",
-            f"{ml_score * 100:.1f}%"
+            f"{ml_score:.0%}"
         )
 
     with col3:
+        st.metric(
+            "Status",
+            str(
+                selected_alert.get(
+                    "status",
+                    "NEW"
+                )
+            )
+        )
 
+    with col4:
         st.metric(
             "Severity",
-            str(
-                selected_alert.get(
-                    "severity",
-                    "UNKNOWN"
-                )
-            )
+            severity
         )
 
-    c1, c2, c3 = st.columns(3)
+    # --------------------------------------------------------
+    # FLOW INFORMATION
+    # --------------------------------------------------------
 
-    with c1:
+    st.markdown("#### 🌐 Flow Information")
 
-        st.markdown("**Threat Class**")
+    flow_col1, flow_col2 = st.columns(2)
 
-        st.info(
-            str(
-                selected_alert.get(
-                    "threat_class",
-                    "Unknown"
-                )
-            )
-        )
-
-    with c2:
-
-        st.markdown("**Severity**")
-
-        st.warning(
-            str(
-                selected_alert.get(
-                    "severity",
-                    "Unknown"
-                )
-            )
-        )
-
-    with c3:
-
-        confidence = float(
-            selected_alert.get(
-                "confidence",
-                0
-            )
-        )
-
-        st.markdown("**Confidence**")
-
-        st.metric(
-            "Detection Confidence",
-            f"{confidence * 100:.1f}%"
-        )
-
-    c4, c5 = st.columns(2)
-
-    with c4:
+    with flow_col1:
 
         st.markdown("**Source**")
 
@@ -1351,7 +1498,7 @@ else:
             )
         )
 
-    with c5:
+    with flow_col2:
 
         st.markdown("**Destination**")
 
@@ -1364,20 +1511,39 @@ else:
             )
         )
 
-    st.markdown("**Timestamp**")
+    flow_col3, flow_col4 = st.columns(2)
 
-    st.write(
-        str(
-            selected_alert.get(
-                "timestamp",
-                "Unknown"
+    with flow_col3:
+
+        st.markdown("**Flow ID**")
+
+        st.code(
+            str(
+                selected_alert.get(
+                    "flow_id",
+                    "Unknown"
+                )
             )
         )
-    )
 
-    st.markdown(
-        "### 🧾 Supporting Evidence"
-    )
+    with flow_col4:
+
+        st.markdown("**Timestamp**")
+
+        st.code(
+            str(
+                selected_alert.get(
+                    "timestamp",
+                    "Unknown"
+                )
+            )
+        )
+
+    # --------------------------------------------------------
+    # SUPPORTING EVIDENCE
+    # --------------------------------------------------------
+
+    st.markdown("#### 🧾 Supporting Evidence")
 
     st.info(
         str(
@@ -1399,31 +1565,86 @@ st.markdown(
     "### 🤖 CYBER-ASTRA AI Analyst"
 )
 
-st.write(
-    "Use the local Qwen3 model to interpret the selected "
-    "detection evidence and summarize it for a SOC analyst."
+st.caption(
+    "Qwen3-powered passive analysis of the selected security alert."
 )
 
+# ------------------------------------------------------------
+# AI ANALYST STATUS
+# ------------------------------------------------------------
+
+status_col1, status_col2, status_col3 = st.columns(3)
+
+with status_col1:
+    st.success("🟢 AI ANALYST READY")
+
+with status_col2:
+    st.info(f"🧠 MODEL: {OLLAMA_MODEL}")
+
+with status_col3:
+    st.info("🔒 PASSIVE ANALYSIS")
+
+st.markdown("")
+
+# ------------------------------------------------------------
+# SELECTED ALERT CONTEXT
+# ------------------------------------------------------------
 
 if not filtered_df.empty:
+
+    ai_col1, ai_col2 = st.columns([2, 1])
+
+    with ai_col1:
+
+        st.markdown("#### 🎯 Selected Alert")
+
+        st.markdown(
+            f"""
+**Threat:** `{selected_alert.get("threat_class", "Unknown")}`
+
+**Severity:** `{selected_alert.get("severity", "Unknown")}`
+
+**Flow ID:** `{selected_alert.get("flow_id", "Unknown")}`
+"""
+        )
+
+    with ai_col2:
+
+        confidence_preview = safe_float(
+            selected_alert.get("confidence", 0)
+        )
+
+        ml_preview = safe_float(
+            selected_alert.get("ml_anomaly_score", 0)
+        )
+
+        st.metric(
+            "Detection Confidence",
+            f"{confidence_preview:.0%}"
+        )
+
+        st.metric(
+            "ML Anomaly Score",
+            f"{ml_preview:.0%}"
+        )
+
+    st.markdown("")
+
+    # --------------------------------------------------------
+    # ANALYSIS BUTTON
+    # --------------------------------------------------------
 
     if st.button(
         "🧠 Analyze Selected Alert with Qwen3",
         use_container_width=True
     ):
 
-        confidence = float(
-            selected_alert.get(
-                "confidence",
-                0
-            )
+        confidence = safe_float(
+            selected_alert.get("confidence", 0)
         )
 
-        ml_anomaly_score = float(
-            selected_alert.get(
-                "ml_anomaly_score",
-                0
-            )
+        ml_anomaly_score = safe_float(
+            selected_alert.get("ml_anomaly_score", 0)
         )
 
         prompt = f"""
@@ -1496,28 +1717,69 @@ Give 2-3 passive investigation areas using available traffic records or metadata
 Give one concise sentence describing how a SOC analyst should interpret this alert.
 """
 
+        # ----------------------------------------------------
+        # AI RESPONSE
+        # ----------------------------------------------------
+
+        st.markdown("#### 🧠 Qwen3 Analyst Assessment")
+
         with st.spinner(
-            "Qwen3 is analyzing the alert..."
+            "Qwen3 is analyzing the selected alert..."
         ):
 
             try:
 
+                headers = {
+                    "Content-Type": "application/json"
+                }
+
+                if OLLAMA_API_KEY:
+
+                    headers["Authorization"] = (
+                        f"Bearer {OLLAMA_API_KEY}"
+                    )
+
+                if OLLAMA_URL.rstrip("/").endswith("/api/chat"):
+
+                    payload = {
+                        "model": OLLAMA_MODEL,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
+                        "stream": True,
+                        "think": False,
+                        "options": {
+                            "temperature": 0.1,
+                            "num_predict": 180,
+                            "num_ctx": 2048,
+                        },
+                    }
+
+                else:
+
+                    payload = {
+                        "model": OLLAMA_MODEL,
+                        "prompt": prompt,
+                        "stream": True,
+                        "think": False,
+                        "options": {
+                            "temperature": 0.1,
+                            "num_predict": 180,
+                            "num_ctx": 2048,
+                        },
+                    }
+
                 response = requests.post(
-  		    OLLAMA_URL,
-    		    json={
-        		"model": OLLAMA_MODEL,
-       			"prompt": prompt,
-     			"stream": True,
-     			"think": False,
-    			"options": {
-       			   "temperature": 0.1,
-            		   "num_predict": 180,
-            		   "num_ctx": 2048,
-        		},
-    		    },
-    		     stream=True,
-   		     timeout=(10, 300),
-		)
+                    OLLAMA_URL,
+                    headers=headers,
+                    json=payload,
+                    stream=True,
+                    timeout=(10, 300),
+                )
+
                 response.raise_for_status()
 
                 analysis_placeholder = st.empty()
@@ -1540,13 +1802,34 @@ Give one concise sentence describing how a SOC analyst should interpret this ale
                             ""
                         )
 
-                        analysis_text += token
+                        if not token:
+
+                            message = chunk.get(
+                                "message",
+                                {}
+                            )
+
+                            if isinstance(
+                                message,
+                                dict
+                            ):
+
+                                token = (
+                                    message.get(
+                                        "content",
+                                        ""
+                                    )
+                                    or ""
+                                )
+
+                        analysis_text += str(token)
 
                         analysis_placeholder.markdown(
                             analysis_text
                         )
 
                     except Exception:
+
                         continue
 
                 if not analysis_text.strip():
@@ -1558,7 +1841,7 @@ Give one concise sentence describing how a SOC analyst should interpret this ale
                 else:
 
                     st.success(
-                        "Qwen3 analysis completed."
+                        "✅ Qwen3 analysis completed."
                     )
 
             except requests.exceptions.ConnectionError:
@@ -1590,7 +1873,7 @@ else:
 
 
 # ============================================================
-# ARCHITECTURE
+# DETECTION ARCHITECTURE — STEP 9
 # ============================================================
 
 st.divider()
@@ -1599,31 +1882,153 @@ st.markdown(
     "### 🔐 CYBER-ASTRA Detection Architecture"
 )
 
-st.code(
+st.caption(
+    "End-to-end passive detection pipeline for unidirectional IP traffic."
+)
+
+# ------------------------------------------------------------
+# PIPELINE
+# ------------------------------------------------------------
+
+st.markdown(
     """
-ONE-WAY TRAFFIC / PASSIVE FLOW RECORDS
-                ↓
-        READ-ONLY INGESTION
-                ↓
-        FEATURE EXTRACTION
-                ↓
-    ┌───────────┬───────────┬───────────┐
-    │   DDoS    │    C2     │    DGA    │
-    ├───────────┼───────────┼───────────┤
-    │   TLS     │   RECON   │   EXFIL   │
-    └───────────┴───────────┴───────────┘
-                ↓
-       DETECTION + SCORING
-                ↓
-       CONFIDENCE + EVIDENCE
-                ↓
-          ALERT STORE
-                ↓
-          QWEN3 AI ANALYST
-                ↓
-          SOC DASHBOARD
-    """,
-    language="text"
+<div style="
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid rgba(120,120,120,0.25);
+    background: rgba(30,30,30,0.35);
+">
+
+<div style="text-align:center;">
+
+<h4>📡 ONE-WAY TRAFFIC</h4>
+<p>Passive flow records / mirrored traffic</p>
+
+<h3>↓</h3>
+
+<h4>🔒 READ-ONLY INGESTION</h4>
+<p>No return path • No active probing</p>
+
+<h3>↓</h3>
+
+<h4>⚙️ FEATURE EXTRACTION</h4>
+<p>Flow rate • timing • byte ratios • entropy • metadata</p>
+
+<h3>↓</h3>
+
+</div>
+
+<div style="
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:12px;
+    margin:20px 0;
+">
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>🛡️ DDoS</b><br>
+<small>Traffic intensity</small>
+</div>
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>🤖 C2</b><br>
+<small>Flow periodicity</small>
+</div>
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>🌐 DGA / DNS</b><br>
+<small>Entropy & length</small>
+</div>
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>🔐 ENCRYPTED</b><br>
+<small>TLS metadata</small>
+</div>
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>🔎 RECON</b><br>
+<small>Destination fan-out</small>
+</div>
+
+<div style="padding:14px;text-align:center;border:1px solid rgba(255,255,255,0.15);border-radius:10px;">
+<b>📤 EXFIL</b><br>
+<small>Traffic asymmetry</small>
+</div>
+
+</div>
+
+<div style="text-align:center;">
+
+<h3>↓</h3>
+
+<h4>🧠 DETECTION + SCORING</h4>
+<p>Rule-based threat engines + ML anomaly detection</p>
+
+<h3>↓</h3>
+
+<h4>🧾 EVIDENCE-BASED ALERT</h4>
+<p>Threat class • confidence • evidence • timestamp • flow ID</p>
+
+<h3>↓</h3>
+
+<h4>🤖 QWEN3 AI ANALYST</h4>
+<p>Passive alert interpretation and investigation focus</p>
+
+<h3>↓</h3>
+
+<h4>🖥️ SOC DASHBOARD</h4>
+<p>Visualization • investigation • replay • validation</p>
+
+</div>
+
+</div>
+""",
+    unsafe_allow_html=True
+)
+
+st.markdown("")
+
+st.info(
+    "🔒 Security constraint: CYBER-ASTRA observes and analyzes traffic "
+    "without probing, modifying, blocking, or sending commands back "
+    "toward the monitored network."
+)
+
+
+# ============================================================
+# FINAL CYBER-ASTRA CLOSING PANEL
+# ============================================================
+
+st.divider()
+
+st.markdown("## 🛡️ CYBER-ASTRA")
+
+st.caption(
+    "AI-Based Passive Cyber Threat Detection"
+)
+
+st.markdown(
+    """
+**ONE-WAY TRAFFIC**  
+↓  
+**AI ANALYSIS**  
+↓  
+**THREAT DETECTION**  
+↓  
+**EVIDENCE-BASED ALERT**
+"""
+)
+
+st.success(
+    "🔒 READ-ONLY • PASSIVE • EVIDENCE-BASED"
+)
+
+st.markdown(
+    "**HACK-ASTRA • SIH26145**"
+)
+
+st.caption(
+    "Detect • Analyze • Defend"
 )
 
 
@@ -1635,7 +2040,6 @@ st.markdown(
     """
     <div class="footer">
         CYBER-ASTRA • HACK-ASTRA • SIH26145<br>
-        Detect • Analyze • Defend<br>
         Read-only passive cyber-threat detection
     </div>
     """,
