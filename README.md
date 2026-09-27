@@ -1,3 +1,4 @@
+<img width="1254" height="1254" alt="cyber_astra_logo" src="https://github.com/user-attachments/assets/4d7ee901-e664-412d-b3ae-9b52726ce25e" />
 # CYBER-ASTRA 🛡️
 
 ### AI-Powered Cyber Threat Detection for Unidirectional IP Traffic
