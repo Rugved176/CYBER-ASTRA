@@ -1,4 +1,6 @@
 import json
+import os
+import requests
 import base64
 from pathlib import Path
 
@@ -19,7 +21,8 @@ LOGO_PATH = BASE_DIR / "assets" / "cyber_astra_logo.png"
 ALERT_FILE = BASE_DIR / "data" / "alerts.json"
 BENCHMARK_FILE = BASE_DIR / "data" / "benchmark_report.json"
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "https://ollama.com/api/chat"
+OLLAMA_API_KEY = None
 OLLAMA_MODEL = "qwen3:14b"
 
 EXPECTED_THREAT_COUNT = 6
@@ -1500,22 +1503,21 @@ Give one concise sentence describing how a SOC analyst should interpret this ale
             try:
 
                 response = requests.post(
-                    OLLAMA_URL,
-                    json={
-                        "model": OLLAMA_MODEL,
-                        "prompt": prompt,
-                        "stream": True,
-                        "think": False,
-                        "options": {
-                            "temperature": 0.1,
-                            "num_predict": 180,
-                            "num_ctx": 2048,
-                        },
-                    },
-                    stream=True,
-                    timeout=(10, 300),
-                )
-
+  		    OLLAMA_URL,
+    		    json={
+        		"model": OLLAMA_MODEL,
+       			"prompt": prompt,
+     			"stream": True,
+     			"think": False,
+    			"options": {
+       			   "temperature": 0.1,
+            		   "num_predict": 180,
+            		   "num_ctx": 2048,
+        		},
+    		    },
+    		     stream=True,
+   		     timeout=(10, 300),
+		)
                 response.raise_for_status()
 
                 analysis_placeholder = st.empty()
