@@ -1,0 +1,61 @@
+@"
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Logs / temporary
+*.log
+*.tmp
+*.temp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# ==========================================
+# CYBER-ASTRA - Local / Generated Files
+# ==========================================
+
+# Large SIH datasets
+data/sih_datasets/
+
+# Local trained ML models
+# models/*.joblib
+models/*.pkl
+models/*.pickle
+
+# Generated benchmark / validation datasets
+data/benchmark_flows.csv
+data/benchmark_report.json
+
+# Runtime alert database
+data/alerts.json
+
+# Local backups
+app_backup*.py
+pages_landing_backup*/
+
+# Project backups
+app_landing_backup_*.py
+pages_landing_backup*/
+
+detectors/engine_backup.py
