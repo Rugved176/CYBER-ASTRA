@@ -59,3 +59,7 @@ app_landing_backup_*.py
 pages_landing_backup*/
 
 detectors/engine_backup.py
+
+# Include live demo state
+!data/alerts.json
+!data/benchmark_report.json
