@@ -1,0 +1,18 @@
+timestamp,threat_class,severity,confidence,src_ip,dst_ip,evidence,flow_id,status,ml_anomaly_score
+NaT,Botnet C2 Beaconing,MEDIUM,0.77,192.168.100.147,192.168.100.3,"Repeated periodic communication pattern: median inter-arrival=3.363s, timing variation ratio=0.282, observations=1408.",3008812,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.147,192.168.100.5,"Repeated periodic communication pattern: median inter-arrival=0.002s, timing variation ratio=0.000, observations=21.",3636868,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.147,192.168.100.6,"Repeated periodic communication pattern: median inter-arrival=0.000s, timing variation ratio=0.000, observations=6.",3588904,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.81,192.168.100.147,192.168.100.7,"Repeated periodic communication pattern: median inter-arrival=2.105s, timing variation ratio=0.241, observations=1103.",628716,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.85,192.168.100.148,192.168.100.3,"Repeated periodic communication pattern: median inter-arrival=3.150s, timing variation ratio=0.205, observations=1399.",2056418,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.148,192.168.100.5,"Repeated periodic communication pattern: median inter-arrival=0.000s, timing variation ratio=0.000, observations=16.",3635881,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.148,192.168.100.6,"Repeated periodic communication pattern: median inter-arrival=2.073s, timing variation ratio=0.043, observations=1145.",1061387,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.148,192.168.100.7,"Repeated periodic communication pattern: median inter-arrival=0.000s, timing variation ratio=0.000, observations=5.",3593629,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.149,192.168.100.6,"Repeated periodic communication pattern: median inter-arrival=0.000s, timing variation ratio=0.000, observations=6.",3589701,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.74,192.168.100.150,192.168.100.3,"Repeated periodic communication pattern: median inter-arrival=2.941s, timing variation ratio=0.313, observations=2459.",792371,NEW,0.0
+NaT,Botnet C2 Beaconing,MEDIUM,0.95,192.168.100.150,192.168.100.5,"Repeated periodic communication pattern: median inter-arrival=0.000s, timing variation ratio=0.000, observations=25.",3635029,NEW,0.0
+NaT,Volumetric / Protocol DDoS,HIGH,0.95,192.168.100.147,192.168.100.3,"BoT-IoT behavioral DDoS pattern: median connection activity=200, median traffic rate=0.308, median inter-arrival=2.384s.",3008812,NEW,0.0
+NaT,Volumetric / Protocol DDoS,HIGH,0.93,192.168.100.148,192.168.100.3,"BoT-IoT behavioral DDoS pattern: median connection activity=198, peak traffic rate=1424.501, median inter-arrival=2.689s.",2056418,NEW,0.0
+NaT,Volumetric / Protocol DDoS,HIGH,0.93,192.168.100.149,192.168.100.3,"BoT-IoT behavioral DDoS pattern: median connection activity=198, peak traffic rate=10729.614, median inter-arrival=2.691s.",2795650,NEW,0.0
+NaT,Volumetric / Protocol DDoS,HIGH,0.95,192.168.100.150,192.168.100.3,"BoT-IoT behavioral DDoS pattern: median connection activity=200, median traffic rate=0.447, median inter-arrival=2.885s.",792371,NEW,0.0
+NaT,Reconnaissance / Port Scanning,HIGH,0.95,192.168.100.3,192.168.100.147,"Behavior-level reconnaissance pattern: 12 unique destination ports, 6 unique destination hosts, median inter-arrival=0.000000s.",1914752,NEW,0.0
+NaT,Reconnaissance / Port Scanning,HIGH,0.79,192.168.100.5,192.168.100.150,"Behavior-level reconnaissance pattern: 5 unique destination hosts, median inter-arrival=0.000000s.",3639818,NEW,0.0

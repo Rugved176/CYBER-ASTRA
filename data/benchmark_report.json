@@ -4,25 +4,24 @@
   "target_throughput_fps": 100.0,
   "counts": {
     "flows_analyzed": 6000,
-    "alerts_generated": 6000
+    "alerts_generated": 4001
   },
   "stage_metrics_seconds": {
-    "ingestion": 1.597351,
-    "engineering": 0.017345,
-    "detection": 3.116465,
-    "total_execution": 4.731161
+    "ingestion": 0.643104,
+    "engineering": 0.013178,
+    "detection": 1.558837,
+    "total_execution": 2.21512
   },
   "performance_kpis": {
-    "throughput_fps": 1268.19,
-    "avg_processing_ms_per_flow": 0.789,
+    "throughput_fps": 2708.66,
+    "avg_processing_ms_per_flow": 0.369,
     "target_achieved": true
   },
   "threat_coverage": {
-    "Volumetric / Protocol DDoS": 1000,
-    "Botnet C2 Beaconing": 1000,
     "DGA Domains / DNS Tunnelling": 1000,
     "Malware in Encrypted Session": 1000,
     "Reconnaissance / Port Scanning": 1000,
-    "Data Exfiltration": 1000
+    "Data Exfiltration": 1000,
+    "Botnet C2 Beaconing": 1
   }
 }
